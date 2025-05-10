@@ -1,72 +1,169 @@
+// const mqtt = require('mqtt');
+// const { redisClient } = require('../redis/redisClient');
+// const { TaskModel } = require('../mongo/task.model');
+// require('dotenv').config()
+
+//  const Task_Key = 'FULLSTACK_TASK_AMAN';
+
+// function mqttHandler(){
+//   const client = mqtt.connect('mqtt://broker.hivemq.com')
+
+//     client.on('connect',()=>{
+
+//         console.log('Connected to MQTT Broker');
+
+//         client.subscribe('/add',(err)=>{
+//              if(err){
+//                 console.log(err.message);
+//              }else{
+//                 console.log('subscribe to /add');
+                
+//              }
+//         })
+//     })
+
+
+    
+//      client.on('message',async(topic,message)=>{
+   
+//      const task = message.toString()
+    
+//        try{
+//          if(JSON.parse(task)){
+//          console.log('task is json string invalid');
+//          return
+//          }
+//       }catch(err){
+//         console.log(err.message);  
+//      }
+   
+
+//     try{
+//      // getting tasklist from redis and pushing new task 
+//         let taskList = await redisClient.get(Task_Key)
+//         taskList = taskList? JSON.parse(taskList):[]
+//         taskList.push(task)
+//         console.log('checking redis', taskList);
+       
+//      // for mongoDB convert task arry into arr of task obj by mapping
+//          let mongoTask = taskList.map((el)=>({task:el}))
+
+//     //checking task list number 
+//         if(taskList.length>50){
+//             await TaskModel.insertMany(mongoTask)
+//             await redisClient.del(Task_Key)
+//             console.log('moved task in mongoDB and delete from redis');
+//         }
+      
+//         await redisClient.set(Task_Key, JSON.stringify(taskList))
+   
+
+//     }catch(err){
+//       console.log(err.message);
+      
+//     }
+ 
+   
+// })
+
+
+
+//      client.on('error', (err) => {
+//       console.error('MQTT connection error:', err.message);
+//      });
+
+
+
+
+
+
+
+
+// }
+
+
+
+// module.exports = mqttHandler;
+
+
+
+
 const mqtt = require('mqtt');
 const { redisClient } = require('../redis/redisClient');
 const { TaskModel } = require('../mongo/task.model');
-require('dotenv').config()
-const client = mqtt.connect('mqtt://broker.hivemq.com')
+require('dotenv').config();
 
+const Task_Key = 'FULLSTACK_TASK_AMAN';
 
- const Task_Key = 'FULLSTACK_TASK_AMAN';
+function mqttHandler() {
 
+  const client = mqtt.connect('mqtt://broker.hivemq.com');
 
-module.exports = ()=>{
+  client.on('connect', () => {
+    console.log('Connected to MQTT Broker');
 
-    client.on('connect',()=>{
+    client.subscribe('/add', (err) => {
+      if (err) {
+        console.log(err.message);
+      } else {
+        console.log('Subscribed to /add');
+      }
+    });
 
-        console.log('Connected to MQTT Broker');
-
-        client.subscribe('/add',(err)=>{
-             if(err){
-                console.log(err.message);
-             }else{
-                console.log('subscribe to /add');
-                
-             }
-        })
-    })
-
-
-}
+  });
 
 
 
-
-client.on('message',async(topic,message)=>{
-   
-     const task = message.toString()
-     if (!task) return console.warn('Empty task received.');
-     console.log(task);
-   
-
-    try{
-     // getting tasklist from redis and pushing new task 
-        let taskList = await redisClient.get(Task_Key)
-        taskList = taskList? JSON.parse(taskList):[]
-        taskList.push(task)
-        console.log('checking redis', taskList);
-       
-     // for mongoDB convert task arry into arr of task obj by mapping
-         let mongoTask = taskList.map((el)=>({task:el}))
-
-    //checking task list number 
-        if(taskList.length>50){
-            await TaskModel.insertMany(mongoTask)
-            await redisClient.del(Task_Key)
-            console.log('moved task in mongoDB and delete from redis');
-        }
-       
-        await redisClient.set(Task_Key, JSON.stringify(taskList))
-   
-
-    }catch(err){
-      console.log(err.message);
+   client.on('message', async (topic, message) => {
+    let task = message.toString();
       
+    if(task === ''){
+        console.log('empty task ');
+        return
     }
- 
-   
-})
+    // checking if data in json string so not valid
+     try{
+         if(JSON.parse(task)){
+         console.log('task is in json invalid');
+         return
+         }
+     }catch(err){
+        console.log(err.message);  
+     }
 
 
+    try {
+    // Getting the current task list from Redis
+        let taskList = await redisClient.get(Task_Key);
+        taskList = taskList ? JSON.parse(taskList) : [];
+        taskList.push(task);
 
-client.on('error', (err) => {
+
+    // Convert the task array into an array of task objects for MongoDB
+       let mongoTask = taskList.map((el) => ({ task: el }));
+       console.log('mongotask',mongoTask);
+       
+    //If the task list exceeds 50 tasks, move them to MongoDB and clear Redis
+      if (taskList.length > 2) {
+          await TaskModel.insertMany(mongoTask);   
+          await  redisClient.del(Task_Key)    
+          console.log('Moved tasks to MongoDB and cleared Redis');
+      }else{
+          await redisClient.set(Task_Key, JSON.stringify(taskList));
+      }
+     
+    
+
+    } catch (err) {
+      console.log(err.message);
+    }
+
+  });
+
+  client.on('error', (err) => {
     console.error('MQTT connection error:', err.message);
   });
+}
+
+module.exports = mqttHandler;
+
