@@ -144,7 +144,7 @@ function mqttHandler() {
        console.log('mongotask',mongoTask);
        
     //If the task list exceeds 50 tasks, move them to MongoDB and clear Redis
-      if (taskList.length > 2) {
+      if (taskList.length > 50) {
           await TaskModel.insertMany(mongoTask);   
           await  redisClient.del(Task_Key)    
           console.log('Moved tasks to MongoDB and cleared Redis');
