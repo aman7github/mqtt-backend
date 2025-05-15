@@ -11,8 +11,8 @@ const Task_Key = 'FULLSTACK_TASK_AMAN';
 
 function mqttHandler() {
 
-  const client = mqtt.connect('wss://test.mosquitto.org:8081');
-  
+//  const client = mqtt.connect('wss://test.mosquitto.org:8081');
+  const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
   client.on('connect', () => {
     console.log('Connected to MQTT Broker');
